@@ -1,0 +1,38 @@
+cabal-version: 3.0
+name: wasm-cardano-node
+version: 0.1.0.0
+license: Apache-2.0
+license-file: LICENSE
+build-type: Simple
+
+-- build.py links this target against the existing sc-pab package databases,
+-- using their exact Cabal plan unit IDs rather than solving/rebuilding the graph.
+executable cardano-stream
+  main-is: Stream.hs
+  hs-source-dirs: src
+  other-modules: VersionData
+  default-language: GHC2021
+  ghc-options:
+    -O1 -Wall -Werror -no-hs-main
+    -optl-mexec-model=reactor
+    -optl-Wl,--export=cardanoStream
+    -optl-Wl,--export=hs_init
+    -optl-Wl,--max-memory=536870912
+  build-depends:
+    base,
+    ghc-experimental,
+    aeson,
+    async,
+    base16-bytestring,
+    bytestring,
+    cborg,
+    containers,
+    contra-tracer ==0.1.0.2,
+    text,
+    cardano-api ==11.0.0.0,
+    cardano-diffusion:api ==1.0.0.0,
+    cardano-ledger-core,
+    cardano-protocol-tpraos,
+    cardano-slotting,
+    ouroboros-consensus:{ouroboros-consensus, cardano} ==3.0.1.0,
+    ouroboros-network:{api, framework, protocols} ==1.1.0.0

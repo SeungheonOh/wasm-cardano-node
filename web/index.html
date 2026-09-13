@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cardano · Live chain</title>
+<link rel="stylesheet" href="/web/style.css">
+<main>
+  <div class="eyebrow">CARDANO / LIVE CHAIN</div>
+  <h1>A window into<br>the moving chain.</h1>
+  <p class="intro">Follow a relay’s latest blocks and transactions. This session starts at the current tip and keeps no chain database.</p>
+  <section class="connection">
+    <label>Byte bridge <input id="url" spellcheck="false" aria-label="Byte bridge"></label>
+    <label>Network <select id="network"><option value="2">Preview</option><option value="1">Preprod</option><option value="764824073">Mainnet</option></select></label>
+    <label class="check"><input id="blocks" type="checkbox" checked> Include transactions</label>
+    <button id="connect">Connect</button><button id="stop" disabled>Disconnect</button>
+  </section>
+  <p id="peer" class="note"></p>
+  <div class="status"><span id="state">Ready</span><span id="memory">—</span><span id="received">—</span></div>
+  <div class="stats"><div><span>LATEST SLOT</span><strong id="slot">—</strong></div><div><span>BLOCKS RECEIVED</span><strong id="count">0</strong></div><div><span>TRANSACTIONS</span><strong id="txs">0</strong></div></div>
+  <div class="feed-title"><h2>Chain events</h2><span>Latest 80 events · this session</span></div>
+  <div id="empty">Connect to watch the next block arrive.</div>
+  <ol id="events"></ol>
+  <p class="note">Events reflect the connected peer’s view. Rollbacks are reported; inclusion is not finality. This client does not validate the ledger.</p>
+</main>
+<script type="module" src="/web/app.mjs"></script>
+</html>

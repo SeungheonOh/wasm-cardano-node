@@ -1,0 +1,21 @@
+{
+  "name": "wasm-cardano-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "python3 build.py",
+    "dev": "node bridge.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:live": "node test/live.mjs",
+    "test:browser": "node test/browser.mjs",
+    "probe:direct": "node test/direct-relay.mjs"
+  },
+  "dependencies": {
+    "ws": "8.21.3"
+  },
+  "devDependencies": {
+    "playwright-core": "1.62.1"
+  },
+  "license": "Apache-2.0"
+}
