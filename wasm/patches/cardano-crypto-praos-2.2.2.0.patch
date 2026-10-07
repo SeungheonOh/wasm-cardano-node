@@ -1,0 +1,115 @@
+--- a/cardano-crypto-praos.cabal
++++ b/cardano-crypto-praos.cabal
+@@ -91,7 +91,7 @@
+     nothunks,
+     primitive,
+ 
+-  pkgconfig-depends: libsodium
++  build-depends: sodium-clib
+ 
+   if !flag(external-libsodium-vrf)
+     c-sources:
+@@ -121,38 +121,3 @@
+     cardano-crypto-praos,
+     hspec,
+ 
+-test-suite tests
+-  import: base, project-config
+-  type: exitcode-stdio-1.0
+-  hs-source-dirs: test
+-  other-modules: Paths_cardano_crypto_praos
+-  autogen-modules: Paths_cardano_crypto_praos
+-  main-is: Main.hs
+-  build-depends:
+-    base,
+-    cardano-crypto-class,
+-    cardano-crypto-praos:testlib,
+-    hspec,
+-
+-  ghc-options:
+-    -threaded
+-    -rtsopts
+-    -with-rtsopts=-N
+-
+-benchmark bench
+-  import: base, project-config
+-  type: exitcode-stdio-1.0
+-  hs-source-dirs: bench
+-  main-is: Main.hs
+-  other-modules:
+-    Bench.Crypto.VRF
+-
+-  build-depends:
+-    base,
+-    bytestring,
+-    cardano-crypto-class:{cardano-crypto-class, benchlib},
+-    cardano-crypto-praos,
+-    criterion,
+-    deepseq,
+-
+-  ghc-options: -threaded
+--- a/cbits/vrf13_batchcompat/verify.c
++++ b/cbits/vrf13_batchcompat/verify.c
+@@ -242,7 +242,7 @@
+         // This should never happen
+         abort();
+     }
+-    unsigned long scalar64x4[4];
++    unsigned long long scalar64x4[4];
+     unsigned long radix = 1 << w;
+     unsigned long window_mask = radix - 1;
+     unsigned long carry = 0;
+--- a/src/Cardano/Crypto/VRF/Praos.hs
++++ b/src/Cardano/Crypto/VRF/Praos.hs
+@@ -292,6 +292,9 @@
+ instance Eq Proof where
+   a == b = proofBytes a == proofBytes b
+ 
++instance Ord Proof where
++  compare a b = compare (proofBytes a) (proofBytes b)
++
+ instance ToCBOR Proof where
+   toCBOR = toCBOR . proofBytes
+   encodedSizeExpr _ _ =
+@@ -526,7 +529,7 @@
+     deriving newtype (NFData)
+ 
+   newtype CertVRF PraosVRF = CertPraosVRF Proof
+-    deriving stock (Show, Eq, Generic)
++    deriving stock (Show, Eq, Ord, Generic)
+     deriving newtype (ToCBOR, FromCBOR)
+     deriving (NoThunks) via OnlyCheckWhnfNamed "CertKeyVRF PraosVRF" Proof
+     deriving newtype (NFData)
+--- a/src/Cardano/Crypto/VRF/PraosBatchCompat.hs
++++ b/src/Cardano/Crypto/VRF/PraosBatchCompat.hs
+@@ -187,9 +187,9 @@
+ foreign import ccall "crypto_vrf_seed_keypair"
+   crypto_vrf_ietfdraft13_keypair_from_seed :: VerKeyPtr -> SignKeyPtr -> SeedPtr -> IO CInt
+ foreign import ccall "crypto_vrf_sk_to_pk"
+-  crypto_vrf_ietfdraft13_sk_to_pk :: VerKeyPtr -> SignKeyPtr -> IO CInt
++  crypto_vrf_ietfdraft13_sk_to_pk :: VerKeyPtr -> SignKeyPtr -> IO ()
+ foreign import ccall "crypto_vrf_sk_to_seed"
+-  crypto_vrf_ietfdraft13_sk_to_seed :: SeedPtr -> SignKeyPtr -> IO CInt
++  crypto_vrf_ietfdraft13_sk_to_seed :: SeedPtr -> SignKeyPtr -> IO ()
+ foreign import ccall "crypto_vrf_ietfdraft13_prove_batchcompat"
+   crypto_vrf_ietfdraft13_prove_batchcompat ::
+     ProofPtr -> SignKeyPtr -> Ptr CChar -> CULLong -> IO CInt
+@@ -313,6 +313,9 @@
+ 
+ instance Eq Proof where
+   a == b = proofBytes a == proofBytes b
++
++instance Ord Proof where
++  compare a b = compare (proofBytes a) (proofBytes b)
+ 
+ instance ToCBOR Proof where
+   toCBOR = toCBOR . proofBytes
+@@ -537,7 +540,7 @@
+     deriving newtype (NFData)
+ 
+   newtype CertVRF PraosBatchCompatVRF = CertPraosBatchCompatVRF Proof
+-    deriving stock (Show, Eq, Generic)
++    deriving stock (Show, Eq, Ord, Generic)
+     deriving newtype (ToCBOR, FromCBOR)
+     deriving (NoThunks) via OnlyCheckWhnfNamed "CertKeyVRF PraosBatchCompatVRF" Proof
+     deriving newtype (NFData)

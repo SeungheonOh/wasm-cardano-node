@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cardano-submit",
+  "account_id": "e855335a6175305976cc984075979c30",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-09-13",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "cardano.isotopy.xyz", "custom_domain": true }],
+  "build": { "command": "node scripts/build-cloudflare.mjs" },
+  "assets": {
+    "directory": "build/cloudflare-assets",
+    "run_worker_first": ["/ouroboros"],
+    "not_found_handling": "404-page"
+  },
+  // Free-plan CPU limit is enforced by Cloudflare (10 ms); custom CPU limits
+  // require Paid. Deployment refuses accounts that are not on Workers Free.
+  "observability": { "enabled": false },
+  "ratelimits": [
+    { "name": "PER_IP", "namespace_id": "913202601", "simple": { "limit": 4, "period": 60 } },
+    { "name": "PER_LOCATION", "namespace_id": "913202602", "simple": { "limit": 30, "period": 60 } }
+  ]
+}

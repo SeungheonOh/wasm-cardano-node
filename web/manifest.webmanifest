@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "Cardano",
+  "short_name": "Cardano",
+  "version": "0.2.0",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/web/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "permissions_policy": {
+    "direct-sockets": [
+      "self"
+    ],
+    "cross-origin-isolated": [
+      "self"
+    ]
+  }
+}

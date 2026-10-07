@@ -24,12 +24,14 @@ export async function startBridge({ host = '127.0.0.1', port = 4175,
         res.setHeader('Content-Type', 'application/json');
         return res.end(JSON.stringify({ peerHost, peerPort, networkMagic }));
       }
-      const relative = pathname === '/' ? 'web/index.html' : decodeURIComponent(pathname).slice(1);
+      const relative = pathname === '/' ? 'dist/chain.html'
+        : pathname === '/manifest.webmanifest' ? 'web/manifest.webmanifest' : decodeURIComponent(pathname).slice(1);
       if (!relative.startsWith('web/') && !relative.startsWith('dist/')) throw new Error('Not found');
       const filename = path.resolve(root, relative);
       if (!filename.startsWith(root + path.sep)) throw new Error('Not found');
       const types = { '.mjs': 'text/javascript', '.js': 'text/javascript', '.html': 'text/html',
-        '.css': 'text/css', '.json': 'application/json', '.wasm': 'application/wasm', '.gz': 'application/gzip' };
+        '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
+        '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.gz': 'application/gzip' };
       const bytes = await readFile(filename);
       res.setHeader('Content-Type', types[path.extname(filename)] ?? 'application/octet-stream');
       res.setHeader('Cache-Control', 'no-cache');

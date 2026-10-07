@@ -1,21 +1,22 @@
 cabal-version: 3.0
 name: wasm-cardano-node
-version: 0.1.0.0
+version: 0.2.0.0
 license: Apache-2.0
 license-file: LICENSE
 build-type: Simple
 
--- build.py links this target against the existing sc-pab package databases,
--- using their exact Cabal plan unit IDs rather than solving/rebuilding the graph.
+-- The local WASM project builds all dependencies before linking this reactor.
 executable cardano-stream
-  main-is: Stream.hs
+  main-is: Reactor.hs
   hs-source-dirs: src
-  other-modules: VersionData
+  other-modules: Stream, VersionData, Transaction, Submission
   default-language: GHC2021
   ghc-options:
     -O1 -Wall -Werror -no-hs-main
     -optl-mexec-model=reactor
     -optl-Wl,--export=cardanoStream
+    -optl-Wl,--export=cardanoInspectTransaction
+    -optl-Wl,--export=cardanoSubmitTransaction
     -optl-Wl,--export=hs_init
     -optl-Wl,--max-memory=536870912
   build-depends:

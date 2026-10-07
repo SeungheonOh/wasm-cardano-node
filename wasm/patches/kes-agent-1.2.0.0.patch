@@ -1,0 +1,18 @@
+--- a/src/Cardano/KESAgent/Serialization/DirectCodec.hs
++++ b/src/Cardano/KESAgent/Serialization/DirectCodec.hs
+@@ -546,6 +546,7 @@
+   , HasInfo (DirectCodec m) (SignKeyKES kes)
+   , HasInfo (DirectCodec m) (VerKeyKES kes)
+   , HashSize h ~ SeedSizeKES kes
++  , KnownNat (2 * TotalPeriodsKES kes)
+   , KnownNat (SignKeySizeKES kes)
+   , KnownNat (VerKeySizeKES kes)
+   , KnownNat (SeedSizeKES kes)
+@@ -613,6 +614,7 @@
+   , HasInfo (DirectCodec m) (SignKeyKES kes)
+   , HasInfo (DirectCodec m) (VerKeyKES kes)
+   , HashSize h ~ SeedSizeKES kes
++  , KnownNat (2 * TotalPeriodsKES kes)
+   , KnownNat (SignKeySizeKES kes)
+   , KnownNat (VerKeySizeKES kes)
+   , KnownNat (SeedSizeKES kes)

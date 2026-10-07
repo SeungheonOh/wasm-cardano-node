@@ -25,6 +25,7 @@ export function decode(bytes) {
     if (offset >= bytes.length) throw new Error('Truncated test CBOR');
     const first = bytes[offset++], major = first >> 5, ai = first & 31;
     if (first === 0xf4 || first === 0xf5) return first === 0xf5;
+    if (first === 0xf6) return null;
     if (major === 4 && ai === 31) {
       const result = [];
       while (bytes[offset] !== 0xff) result.push(go());
@@ -41,8 +42,10 @@ export function decode(bytes) {
       return v >= BigInt(Number.MIN_SAFE_INTEGER) && v <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(v) : v;
     }
     if (major === 2) { const value = bytes.slice(offset, offset + Number(length)); offset += Number(length); return value; }
+    if (major === 3) { const value = new TextDecoder().decode(bytes.slice(offset, offset + Number(length))); offset += Number(length); return value; }
     if (major === 4) return Array.from({ length: Number(length) }, go);
     if (major === 5) return new Map(Array.from({ length: Number(length) }, () => [go(), go()]));
+    if (major === 6) return { tag: Number(length), value: go() };
     throw new Error('Unsupported test CBOR');
   };
   const result = go();

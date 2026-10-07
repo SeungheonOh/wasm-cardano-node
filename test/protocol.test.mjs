@@ -5,10 +5,11 @@ import { reactor } from './runtime.mjs';
 import { MuxTransport, frame, unhex } from '../web/transport.mjs';
 import { encode, decode } from './cbor.mjs';
 
-const fixture = JSON.parse(await readFile(new URL('./fixtures/preview.json', import.meta.url)));
+const preview = JSON.parse(await readFile(new URL('./fixtures/preview.json', import.meta.url)));
+const mainnet = JSON.parse(await readFile(new URL('./fixtures/mainnet.json', import.meta.url)));
 
 async function scenario({ magic = 2, acceptedMagic = magic, blocks = true, endAtConnected = false,
-  noBlocks = false, duplicateBlock = false, invalidChainMessage = false, tipRaces = 0, cycles = 1 } = {}) {
+  noBlocks = false, duplicateBlock = false, invalidChainMessage = false, tipRaces = 0, cycles = 1, fixture = preview } = {}) {
   const events = [], sent = [];
   let next = 0, intersections = 0, mux;
   const reply = (protocol, payload) => {
@@ -90,8 +91,8 @@ test('WASM rejects a different network and out-of-range magic', async () => {
 test('real Conway header/body decode, tip intersection and subsequent rollback', async () => {
   const result = await scenario();
   assert.ifError(result.failure);
-  assert.deepEqual(result.events.map(e => e.type), ['connected', 'intersect', 'rollBackward', 'rollForward', 'block', 'rollBackward']);
-  assert.deepEqual(result.events.find(e => e.type === 'block').point, fixture.point);
+  assert.deepEqual(result.events.filter(e => e.type !== 'keepAlive').map(e => e.type), ['connected', 'intersect', 'rollBackward', 'rollForward', 'block', 'rollBackward']);
+  assert.deepEqual(result.events.find(e => e.type === 'block').point, preview.point);
   assert.equal(result.events.find(e => e.type === 'block').era, 'ConwayEra');
   assert.equal(result.sent.filter(e => e.protocol === 3).length, 1);
   assert(result.memoryBytes < 64 * 1024 * 1024);
@@ -103,6 +104,32 @@ test('header-only mode does not request block bodies', async () => {
   assert(result.events.some(e => e.type === 'rollForward'));
   assert(!result.sent.some(e => e.protocol === 3));
   assert(!result.events.some(e => e.type === 'block'));
+  const ping = result.events.find(e => e.type === 'keepAlive');
+  assert(ping && Number.isFinite(ping.roundTripMs) && ping.roundTripMs >= 0, 'Measure a completed Ouroboros KeepAlive exchange');
+});
+
+test('Mainnet transaction details match independently decoded wire bodies', async () => {
+  const result = await scenario({ magic: 764824073, fixture: mainnet });
+  assert.ifError(result.failure);
+  const transactions = result.events.find(event => event.type === 'block').transactions;
+  assert.equal(transactions.length, 2);
+  for (const [index, tx] of transactions.entries()) {
+    const captured = mainnet.transactions[index];
+    assert.equal(tx.id, captured.id);
+    assert.equal(tx.cborHex, captured.cborHex);
+    assert.equal(tx.sizeBytes, captured.cborHex.length / 2);
+    const [body] = decode(unhex(captured.cborHex));
+    const inputs = body.get(0).value ?? body.get(0);
+    assert.deepEqual(tx.inputs, inputs.map(([id, index]) => ({ txId: Buffer.from(id).toString('hex'), index })));
+    assert.equal(tx.feeLovelace, String(body.get(2)));
+    assert.equal(tx.validity.untilSlot, String(body.get(3)));
+    assert.deepEqual(tx.outputs.map(output => output.lovelace), body.get(1).map(output => String(output[1])));
+    assert.equal(tx.outputLovelace, String(body.get(1).reduce((sum, output) => sum + BigInt(output[1]), 0n)));
+    assert(tx.outputs.every(output => output.address.startsWith('addr1')));
+    assert.equal(tx.scriptValidity, 'valid');
+  }
+  assert.match(transactions[0].metadataJson, /Minswap: Aggregator Cancel Order/);
+  assert.equal(transactions[1].metadataJson, null);
 });
 
 test('unavailable block is explicit and allows the subsequent rollback', async () => {
@@ -126,7 +153,7 @@ test('extra block in a single-block batch and invalid protocol transitions fail'
   const invalid = await scenario({ invalidChainMessage: true });
   assert(invalid.failure, 'Reject a message that is invalid for the current protocol state');
   assert(!invalid.failure.message.includes('timeout'));
-  assert.deepEqual(invalid.events.map(e => e.type), ['connected']);
+  assert.deepEqual(invalid.events.filter(e => e.type !== 'keepAlive').map(e => e.type), ['connected']);
 });
 
 test('250 forward/fetch/rollback cycles retain bounded WASM memory', async () => {

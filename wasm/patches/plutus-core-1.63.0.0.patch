@@ -1,0 +1,604 @@
+--- a/plutus-core/examples/PlutusCore/Examples/Builtins.hs
++++ b/plutus-core/examples/PlutusCore/Examples/Builtins.hs
+@@ -33,6 +33,8 @@
+ import Control.Monad.Except
+ import Data.Default.Class
+ import Data.Either
++import Data.Int (Int64)
++import Data.Word (Word64)
+ import Data.Kind qualified as GHC (Type)
+ import Data.Proxy
+ import Data.Some.GADT qualified as GADT
+@@ -535,11 +537,11 @@
+         (\_ -> unsafePerformIO . regBudgets . runCostingFunOneArgument model)
+   toBuiltinMeaning semvar IntNoIntegerNoWord =
+     case semvar of
+-      ExtensionFunSemanticsVariant0 -> makeBuiltinMeaning @(Int -> ()) mempty whatever
++      ExtensionFunSemanticsVariant0 -> makeBuiltinMeaning @(Int64 -> ()) mempty whatever
+       ExtensionFunSemanticsVariant1 -> makeBuiltinMeaning @(Integer -> ()) mempty whatever
+       ExtensionFunSemanticsVariant2 -> makeBuiltinMeaning @(Integer -> ()) mempty whatever
+-      ExtensionFunSemanticsVariant3 -> makeBuiltinMeaning @(Word -> ()) mempty whatever
+-      ExtensionFunSemanticsVariant4 -> makeBuiltinMeaning @(Word -> ()) mempty whatever
++      ExtensionFunSemanticsVariant3 -> makeBuiltinMeaning @(Word64 -> ()) mempty whatever
++      ExtensionFunSemanticsVariant4 -> makeBuiltinMeaning @(Word64 -> ()) mempty whatever
+ 
+ instance Default (BuiltinSemanticsVariant ExtensionFun) where
+   def = maxBound
+--- a/plutus-core/src/PlutusCore/Bitwise.hs
++++ b/plutus-core/src/PlutusCore/Bitwise.hs
+@@ -35,6 +35,7 @@
+ import Data.ByteString qualified as BS
+ import Data.ByteString.Internal qualified as BSI
+ import Data.ByteString.Unsafe qualified as BSU
++import Data.Int (Int64)
+ import Data.Either (fromRight)
+ import Data.Foldable (for_)
+ import Data.Primitive.ByteArray (ByteArray (ByteArray), copyByteArrayToAddr)
+@@ -509,20 +510,20 @@
+ {-# INLINEABLE complementByteString #-}
+ 
+ -- | Bit read at index, as per [CIP-122](https://github.com/cardano-foundation/CIPs/tree/master/CIP-0122)
+-readBit :: ByteString -> Int -> BuiltinResult Bool
++readBit :: ByteString -> Int64 -> BuiltinResult Bool
+ readBit bs ix
+   | ix < 0 = do
+       emit "readBit: index out of bounds"
+       emit $ "Index: " <> (pack . show $ ix)
+       builtinResultFailure
+-  | ix >= len * 8 = do
++  | ix >= fromIntegral len * 8 = do
+       emit "readBit: index out of bounds"
+       emit $ "Index: " <> (pack . show $ ix)
+       builtinResultFailure
+   | otherwise = do
+       let (bigIx, littleIx) = ix `quotRem` 8
+-      let flipIx = len - bigIx - 1
+-      pure $ Bits.testBit (BS.index bs flipIx) littleIx
++      let flipIx = len - fromIntegral bigIx - 1
++      pure $ Bits.testBit (BS.index bs flipIx) (fromIntegral littleIx)
+   where
+     len :: Int
+     len = BS.length bs
+@@ -801,7 +802,7 @@
+         pokeByteOff dstPtr lastIx newLastByte
+ 
+ -- | Counting the number of set bits, as per [CIP-123](https://github.com/cardano-foundation/CIPs/tree/master/CIP-0123).
+-countSetBits :: ByteString -> Int
++countSetBits :: ByteString -> Int64
+ countSetBits bs = unsafeDupablePerformIO . BS.useAsCString bs $ \srcPtr -> do
+   -- See Note [Loop sectioning] for details of why we
+   -- define this function the way it is. We make use of the fact that `popCount`
+@@ -821,21 +822,21 @@
+     !smallStrides = len `rem` 8
+     offset :: Int
+     !offset = bigStrides * 8
+-    goBig :: Ptr Word64 -> Ptr Word8 -> Int -> Int -> IO Int
++    goBig :: Ptr Word64 -> Ptr Word8 -> Int64 -> Int -> IO Int64
+     goBig !bigSrcPtr !smallSrcPtr !acc !bigIx
+       | bigIx == bigStrides = goSmall smallSrcPtr acc 0
+       | otherwise = do
+           !w64 <- peekElemOff bigSrcPtr bigIx
+-          goBig bigSrcPtr smallSrcPtr (acc + Bits.popCount w64) (bigIx + 1)
+-    goSmall :: Ptr Word8 -> Int -> Int -> IO Int
++          goBig bigSrcPtr smallSrcPtr (acc + fromIntegral (Bits.popCount w64)) (bigIx + 1)
++    goSmall :: Ptr Word8 -> Int64 -> Int -> IO Int64
+     goSmall !smallSrcPtr !acc !smallIx
+       | smallIx == smallStrides = pure acc
+       | otherwise = do
+           !w8 <- peekElemOff smallSrcPtr smallIx
+-          goSmall smallSrcPtr (acc + Bits.popCount w8) (smallIx + 1)
++          goSmall smallSrcPtr (acc + fromIntegral (Bits.popCount w8)) (smallIx + 1)
+ 
+ -- | Finding the first set bit's index, as per [CIP-123](https://github.com/cardano-foundation/CIPs/tree/master/CIP-0123).
+-findFirstSetBit :: ByteString -> Int
++findFirstSetBit :: ByteString -> Int64
+ findFirstSetBit bs = unsafeDupablePerformIO . BS.useAsCString bs $ \srcPtr -> do
+   let bigSrcPtr :: Ptr Word64 = castPtr srcPtr
+   goBig bigSrcPtr 0 (len - 8)
+@@ -868,7 +869,7 @@
+     -- indexing scheme, we don't really have a choice here. This doesn't
+     -- affect the description above however: it just complicates the indexing
+     -- maths required.
+-    goBig :: Ptr Word64 -> Int -> Int -> IO Int
++    goBig :: Ptr Word64 -> Int64 -> Int -> IO Int64
+     goBig !bigSrcPtr !acc !byteIx
+       -- We can do at least one large step. This works because we read
+       -- backwards, which means that `byteIx` is the _last_ position we read
+@@ -900,7 +901,7 @@
+       -- case 1) to small stepping. Combining these cases allows us to
+       -- avoid separate tests for these conditions.
+       | otherwise = goSmall (castPtr bigSrcPtr) acc (8 + byteIx - 1)
+-    goSmall :: Ptr Word8 -> Int -> Int -> IO Int
++    goSmall :: Ptr Word8 -> Int64 -> Int -> IO Int64
+     goSmall !smallSrcPtr !acc !byteIx
+       | byteIx < 0 = pure (-1)
+       | otherwise = do
+@@ -909,7 +910,7 @@
+           -- then counting, we speculatively count, relying on the behaviour of
+           -- `countTrailingZeros` that, on a zero byte, we get 8.
+           let !counted = Bits.countTrailingZeros w8
+-          let !newAcc = acc + counted
++          let !newAcc = acc + fromIntegral counted
+           if counted == 8
+             then goSmall smallSrcPtr newAcc (byteIx - 1)
+             else pure newAcc
+--- a/plutus-core/src/PlutusCore/Default/Builtins.hs
++++ b/plutus-core/src/PlutusCore/Default/Builtins.hs
+@@ -53,6 +53,7 @@
+ 
+ import Codec.Serialise (serialise)
+ import Control.Monad.Except (throwError)
++import Data.Int (Int64)
+ import Data.ByteString (ByteString)
+ import Data.ByteString qualified as BS
+ import Data.ByteString.Lazy qualified as BSL
+@@ -1300,42 +1301,42 @@
+           DefaultFunSemanticsVariantE -> consByteStringMeaning_V2
+   toBuiltinMeaning semvar SliceByteString
+     | ensurable semvar =
+-        let sliceByteStringD :: Int -> Int -> CByteString -> BS.ByteString
+-            sliceByteStringD start n (CByteString xs) = BS.take n (BS.drop start xs)
++        let sliceByteStringD :: Int64 -> Int64 -> CByteString -> BS.ByteString
++            sliceByteStringD start n (CByteString xs) = BS.take (clampSliceIndex n) (BS.drop (clampSliceIndex start) xs)
+             {-# INLINE sliceByteStringD #-}
+          in makeBuiltinMeaning
+               sliceByteStringD
+               (runCostingFunThreeArguments . paramSliceByteString)
+     | otherwise =
+-        let sliceByteStringD :: Int -> Int -> BS.ByteString -> BS.ByteString
+-            sliceByteStringD start n xs = BS.take n (BS.drop start xs)
++        let sliceByteStringD :: Int64 -> Int64 -> BS.ByteString -> BS.ByteString
++            sliceByteStringD start n xs = BS.take (clampSliceIndex n) (BS.drop (clampSliceIndex start) xs)
+             {-# INLINE sliceByteStringD #-}
+          in makeBuiltinMeaning
+               sliceByteStringD
+               (runCostingFunThreeArguments . paramSliceByteString)
+   toBuiltinMeaning _semvar LengthOfByteString =
+-    let lengthOfByteStringD :: BS.ByteString -> BuiltinResult Int
+-        lengthOfByteStringD = pure . BS.length
++    let lengthOfByteStringD :: BS.ByteString -> BuiltinResult Int64
++        lengthOfByteStringD = pure . fromIntegral . BS.length
+         {-# INLINE lengthOfByteStringD #-}
+      in makeBuiltinMeaning
+           lengthOfByteStringD
+           (runCostingFunOneArgument . paramLengthOfByteString)
+   toBuiltinMeaning semvar IndexByteString
+     | ensurable semvar =
+-        let indexByteStringD :: CByteString -> Int -> BuiltinResult Word8
++        let indexByteStringD :: CByteString -> Int64 -> BuiltinResult Word8
+             indexByteStringD (CByteString xs) n =
+               -- See Note [Structural vs operational errors within builtins].
+               -- The arguments are going to be printed in the "cause" part of the error
+               -- message, so we don't need to repeat them here.
+-              maybe (fail "Index out of bounds") pure $ BS.indexMaybe xs n
++              maybe (fail "Index out of bounds") pure $ BS.indexMaybe xs (clampSliceIndex n)
+             {-# INLINE indexByteStringD #-}
+          in makeBuiltinMeaning
+               indexByteStringD
+               (runCostingFunTwoArguments . paramIndexByteString)
+     | otherwise =
+-        let indexByteStringD :: BS.ByteString -> Int -> BuiltinResult Word8
++        let indexByteStringD :: BS.ByteString -> Int64 -> BuiltinResult Word8
+             indexByteStringD xs n =
+-              maybe (fail "Index out of bounds") pure $ BS.indexMaybe xs n
++              maybe (fail "Index out of bounds") pure $ BS.indexMaybe xs (clampSliceIndex n)
+             {-# INLINE indexByteStringD #-}
+          in makeBuiltinMeaning
+               indexByteStringD
+@@ -2175,14 +2176,14 @@
+ 
+   toBuiltinMeaning semvar ReadBit
+     | ensurable semvar =
+-        let readBitD :: CByteString -> Int -> BuiltinResult Bool
++        let readBitD :: CByteString -> Int64 -> BuiltinResult Bool
+             readBitD (CByteString xs) = Bitwise.readBit xs
+             {-# INLINE readBitD #-}
+          in makeBuiltinMeaning
+               readBitD
+               (runCostingFunTwoArguments . paramReadBit)
+     | otherwise =
+-        let readBitD :: BS.ByteString -> Int -> BuiltinResult Bool
++        let readBitD :: BS.ByteString -> Int64 -> BuiltinResult Bool
+             readBitD = Bitwise.readBit
+             {-# INLINE readBitD #-}
+          in makeBuiltinMeaning
+@@ -2228,7 +2229,7 @@
+           (runCostingFunTwoArguments . paramReplicateByte)
+   toBuiltinMeaning semvar ShiftByteString
+     | ensurable semvar =
+-        let shiftByteStringD :: BS.ByteString -> Int -> BS.ByteString
++        let shiftByteStringD :: BS.ByteString -> Int64 -> BS.ByteString
+             shiftByteStringD s n = Bitwise.shiftByteString s (toInteger n)
+             {-# INLINE shiftByteStringD #-}
+          in makeBuiltinMeaning
+@@ -2243,7 +2244,7 @@
+               (runCostingFunTwoArguments . paramShiftByteString)
+   toBuiltinMeaning semvar RotateByteString
+     | ensurable semvar =
+-        let rotateByteStringD :: BS.ByteString -> Int -> BS.ByteString
++        let rotateByteStringD :: BS.ByteString -> Int64 -> BS.ByteString
+             rotateByteStringD s n = Bitwise.rotateByteString s (toInteger n)
+             {-# INLINE rotateByteStringD #-}
+          in makeBuiltinMeaning
+@@ -2258,14 +2259,14 @@
+               (runCostingFunTwoArguments . paramRotateByteString)
+   toBuiltinMeaning semvar CountSetBits
+     | ensurable semvar =
+-        let countSetBitsD :: CByteString -> Int
++        let countSetBitsD :: CByteString -> Int64
+             countSetBitsD (CByteString xs) = Bitwise.countSetBits xs
+             {-# INLINE countSetBitsD #-}
+          in makeBuiltinMeaning
+               countSetBitsD
+               (runCostingFunOneArgument . paramCountSetBits)
+     | otherwise =
+-        let countSetBitsD :: BS.ByteString -> Int
++        let countSetBitsD :: BS.ByteString -> Int64
+             countSetBitsD = Bitwise.countSetBits
+             {-# INLINE countSetBitsD #-}
+          in makeBuiltinMeaning
+@@ -2273,14 +2274,14 @@
+               (runCostingFunOneArgument . paramCountSetBits)
+   toBuiltinMeaning semvar FindFirstSetBit
+     | ensurable semvar =
+-        let findFirstSetBitD :: CByteString -> Int
++        let findFirstSetBitD :: CByteString -> Int64
+             findFirstSetBitD (CByteString xs) = Bitwise.findFirstSetBit xs
+             {-# INLINE findFirstSetBitD #-}
+          in makeBuiltinMeaning
+               findFirstSetBitD
+               (runCostingFunOneArgument . paramFindFirstSetBit)
+     | otherwise =
+-        let findFirstSetBitD :: BS.ByteString -> Int
++        let findFirstSetBitD :: BS.ByteString -> Int64
+             findFirstSetBitD = Bitwise.findFirstSetBit
+             {-# INLINE findFirstSetBitD #-}
+          in makeBuiltinMeaning
+@@ -2368,10 +2369,10 @@
+           dropListDenotation
+           (runCostingFunTwoArguments . paramDropList)
+   toBuiltinMeaning _semvar LengthOfArray =
+-    let lengthOfArrayDenotation :: SomeConstant uni (Vector a) -> BuiltinResult Int
++    let lengthOfArrayDenotation :: SomeConstant uni (Vector a) -> BuiltinResult Int64
+         lengthOfArrayDenotation (SomeConstant (Some (ValueOf uni vec))) =
+           case uni of
+-            DefaultUniArray _uniA -> pure $ Vector.length vec
++            DefaultUniArray _uniA -> pure $ fromIntegral $ Vector.length vec
+             _ -> throwError $ structuralUnliftingError "Expected an array but got something else"
+         {-# INLINE lengthOfArrayDenotation #-}
+      in makeBuiltinMeaning lengthOfArrayDenotation (runCostingFunOneArgument . paramLengthOfArray)
+@@ -2385,11 +2386,11 @@
+         {-# INLINE listToArrayDenotation #-}
+      in makeBuiltinMeaning listToArrayDenotation (runCostingFunOneArgument . paramListToArray)
+   toBuiltinMeaning _semvar IndexArray =
+-    let indexArrayDenotation :: SomeConstant uni (Vector a) -> Int -> BuiltinResult (Opaque val a)
++    let indexArrayDenotation :: SomeConstant uni (Vector a) -> Int64 -> BuiltinResult (Opaque val a)
+         indexArrayDenotation (SomeConstant (Some (ValueOf uni vec))) n =
+           case uni of
+             DefaultUniArray arg -> do
+-              case vec Vector.!? n of
++              case vec Vector.!? (clampSliceIndex n) of
+                 Nothing -> fail "Array index out of bounds"
+                 Just el -> pure $ fromValueOf arg el
+             _ ->
+@@ -2800,3 +2801,8 @@
+ We decided to handle lists the same way by using @chooseList@ rather than @null@ for consistency,
+ before introduction of casing on values of built-in types.
+ -}
++
++-- UPLC integers at this boundary have native Cardano's signed 64-bit range.
++-- Only the indexing of the actual browser-sized byte array uses machine Int.
++clampSliceIndex :: Int64 -> Int
++clampSliceIndex i = fromIntegral (max (fromIntegral (minBound :: Int)) (min (fromIntegral (maxBound :: Int)) i))
+--- a/plutus-core/src/PlutusCore/Evaluation/Machine/ExMemoryUsage.hs
++++ b/plutus-core/src/PlutusCore/Evaluation/Machine/ExMemoryUsage.hs
+@@ -28,6 +28,7 @@
+ import PlutusCore.Value (Value)
+ import PlutusCore.Value qualified as Value
+ 
++import Data.Int (Int64)
+ import Data.ByteString qualified as BS
+ import Data.Map.Strict qualified as Map
+ import Data.Proxy
+@@ -317,7 +318,7 @@
+    bytestring.  -}
+ instance ExMemoryUsage BS.ByteString where
+   -- Don't use `div` here!  That gives 0 instead of 1 for the empty bytestring.
+-  memoryUsage bs = singletonRose . unsafeToSatInt $ ((n - 1) `quot` 8) + 1
++  memoryUsage bs = singletonRose . unsafeToSatInt . fromIntegral $ ((n - 1) `quot` 8) + 1
+     where
+       n = BS.length bs
+   {-# INLINE memoryUsage #-}
+@@ -336,7 +337,11 @@
+ 
+ instance ExMemoryUsage TextCostedByByteLength where
+   memoryUsage (TextCostedByByteLength (TI.Text _ _ lenInBytes)) =
+-    singletonRose . unsafeToSatInt $ lenInBytes `quot` 4
++    singletonRose . unsafeToSatInt . fromIntegral $ lenInBytes `quot` 4
++  {-# INLINE memoryUsage #-}
++
++instance ExMemoryUsage Int64 where
++  memoryUsage _ = singletonRose 1
+   {-# INLINE memoryUsage #-}
+ 
+ instance ExMemoryUsage Int where
+@@ -462,7 +467,7 @@
+ -}
+ 
+ g1ElementCost :: CostRose
+-g1ElementCost = singletonRose . unsafeToSatInt $ BLS12_381.G1.memSizeBytes `div` 8
++g1ElementCost = singletonRose . unsafeToSatInt . fromIntegral $ BLS12_381.G1.memSizeBytes `div` 8
+ {-# OPAQUE g1ElementCost #-}
+ 
+ instance ExMemoryUsage BLS12_381.G1.Element where
+@@ -471,7 +476,7 @@
+ -- Should be 18
+ 
+ g2ElementCost :: CostRose
+-g2ElementCost = singletonRose . unsafeToSatInt $ BLS12_381.G2.memSizeBytes `div` 8
++g2ElementCost = singletonRose . unsafeToSatInt . fromIntegral $ BLS12_381.G2.memSizeBytes `div` 8
+ {-# OPAQUE g2ElementCost #-}
+ 
+ instance ExMemoryUsage BLS12_381.G2.Element where
+@@ -480,7 +485,7 @@
+ -- Should be 36
+ 
+ mlResultElementCost :: CostRose
+-mlResultElementCost = singletonRose . unsafeToSatInt $ BLS12_381.Pairing.mlResultMemSizeBytes `div` 8
++mlResultElementCost = singletonRose . unsafeToSatInt . fromIntegral $ BLS12_381.Pairing.mlResultMemSizeBytes `div` 8
+ {-# OPAQUE mlResultElementCost #-}
+ 
+ instance ExMemoryUsage BLS12_381.Pairing.MlResult where
+--- a/satint/src/Data/SatInt.hs
++++ b/satint/src/Data/SatInt.hs
+@@ -1,9 +1,20 @@
+ -- editorconfig-checker-disable-file
++{-# LANGUAGE CPP #-}
+ {-# LANGUAGE DataKinds #-}
+ {-# LANGUAGE DeriveAnyClass #-}
++{-# LANGUAGE DeriveGeneric #-}
++{-# LANGUAGE DerivingStrategies #-}
++{-# LANGUAGE DerivingVia #-}
++{-# LANGUAGE FlexibleInstances #-}
++{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+ {-# LANGUAGE MagicHash #-}
++{-# LANGUAGE MultiParamTypeClasses #-}
++{-# LANGUAGE ScopedTypeVariables #-}
++{-# LANGUAGE TypeApplications #-}
+ {-# LANGUAGE UnboxedTuples #-}
+ {-# LANGUAGE ViewPatterns #-}
++
++#include "MachDeps.h"
+ 
+ {-|
+ Adapted from 'Data.SafeInt' to perform saturating arithmetic (i.e. returning max or min bounds) instead of throwing on overflow.
+@@ -21,32 +32,39 @@
+ import Control.DeepSeq (NFData)
+ import Data.Aeson (FromJSON, ToJSON)
+ import Data.Bits
++import Data.Coerce
+ import Data.Csv
++import Data.Int (Int64)
+ import Data.Primitive (Prim)
+-import GHC.Base
+ import GHC.Generics
+ import GHC.Natural
+-import GHC.Real
+ import Language.Haskell.TH.Syntax (Lift)
+ import NoThunks.Class
+ 
+-newtype SatInt = SI {unSatInt :: Int}
++#if WORD_SIZE_IN_BITS >= 64
++import GHC.Exts (addIntC#, andI#, int64ToInt#, intToInt64#, isTrue#, subIntC#, timesInt2#,
++                 (<#), (<=#), (>#), (>=#))
++import GHC.Int (Int64 (I64#))
++import GHC.Real (overflowError)
++#endif
++
++newtype SatInt = SI {unSatInt :: Int64}
+   deriving newtype (Show, Read, Eq, Ord, Bounded, NFData, Bits, FiniteBits, Prim)
+   deriving stock (Lift, Generic)
+-  deriving (FromJSON, ToJSON) via Int
+-  deriving (FromField) via Int -- For reading cost model data from CSV input
+-  deriving (Serialise) via Int
++  deriving (FromJSON, ToJSON) via Int64
++  deriving (FromField) via Int64 -- For reading cost model data from CSV input
++  deriving (Serialise) via Int64
+   deriving anyclass (NoThunks)
+ 
+ {-| Wrap an 'Int' as a 'SatInt'. This is unsafe because the 'Int' can be a result of an arbitrary
+ potentially underflowing/overflowing operation. -}
+-unsafeToSatInt :: Int -> SatInt
++unsafeToSatInt :: Int64 -> SatInt
+ unsafeToSatInt = SI
+ {-# INLINE unsafeToSatInt #-}
+ 
+ -- | An optimized version of @fromIntegral . unSatInt@.
+ fromSatInt :: forall a. Num a => SatInt -> a
+-fromSatInt = coerce (fromIntegral :: Int -> a)
++fromSatInt = coerce (fromIntegral :: Int64 -> a)
+ {-# INLINE fromSatInt #-}
+ 
+ {-| In the `Num' instance, we plug in our own addition, multiplication
+@@ -72,7 +90,7 @@
+     | otherwise = negate x
+ 
+   {-# INLINE signum #-}
+-  signum = coerce (signum :: Int -> Int)
++  signum = coerce (signum :: Int64 -> Int64)
+ 
+   {-# INLINE fromInteger #-}
+   fromInteger x
+@@ -92,15 +110,15 @@
+ {-# INLINE dividedBy #-}
+ 
+ maxBoundInteger :: Integer
+-maxBoundInteger = toInteger maxInt
++maxBoundInteger = toInteger (maxBound :: Int64)
+ {-# INLINEABLE maxBoundInteger #-}
+ 
+ minBoundInteger :: Integer
+-minBoundInteger = toInteger minInt
++minBoundInteger = toInteger (minBound :: Int64)
+ {-# INLINEABLE minBoundInteger #-}
+ 
+ {-
+-'addIntC#', 'subIntC#', and 'mulIntMayOflow#' have tricky returns:
++'addIntC#', 'subIntC#', and 'timesInt2#' have tricky returns:
+ all of them return non-zero (*not* necessarily 1) in the case of an overflow,
+ so we can't use 'isTrue#'; and the first two return a truncated value in
+ case of overflow, but this is *not* the same as the saturating result,
+@@ -110,59 +128,117 @@
+ kind of overflow we're facing, and pick the correct result accordingly.
+ -}
+ 
++#if WORD_SIZE_IN_BITS >= 64
++
++-- On 64-bit native targets, 'Int#' and 'Int64#' have the same machine
++-- representation, so the int64ToInt#/intToInt64# casts are zero-cost. This
++-- lets us use GHC's overflow-detecting primitives ('addIntC#', 'subIntC#',
++-- 'timesInt2#'), which on x86_64/aarch64 lower to a small number of machine
++-- instructions with an overflow-flag check.
++
+ plusSI :: SatInt -> SatInt -> SatInt
+-plusSI (SI (I# x#)) (SI (I# y#)) =
+-  case addIntC# x# y# of
+-    (# r#, 0# #) -> SI (I# r#)
+-    -- Overflow
+-    _ ->
+-      if isTrue# ((x# ># 0#) `andI#` (y# ># 0#))
++plusSI (SI (I64# a64#)) (SI (I64# b64#)) =
++  case (# int64ToInt# a64#, int64ToInt# b64# #) of
++    (# x#, y# #) ->
++      case addIntC# x# y# of
++        (# r#, 0# #) -> SI (I64# (intToInt64# r#))
++        -- Overflow
++        _ ->
++          if isTrue# ((x# ># 0#) `andI#` (y# ># 0#))
++            then maxBound
++            else
++              if isTrue# ((x# <# 0#) `andI#` (y# <# 0#))
++                then minBound
++                -- x and y have opposite signs, and yet we've overflowed,
++                -- should be impossible
++                else overflowError
++{-# INLINE plusSI #-}
++
++minusSI :: SatInt -> SatInt -> SatInt
++minusSI (SI (I64# a64#)) (SI (I64# b64#)) =
++  case (# int64ToInt# a64#, int64ToInt# b64# #) of
++    (# x#, y# #) ->
++      case subIntC# x# y# of
++        (# r#, 0# #) -> SI (I64# (intToInt64# r#))
++        -- Overflow
++        _ ->
++          if isTrue# ((x# >=# 0#) `andI#` (y# <# 0#))
++            then maxBound
++            else
++              if isTrue# ((x# <=# 0#) `andI#` (y# ># 0#))
++                then minBound
++                -- x and y have the same sign, and yet we've overflowed,
++                -- should be impossible
++                else overflowError
++{-# INLINE minusSI #-}
++
++timesSI :: SatInt -> SatInt -> SatInt
++timesSI (SI (I64# a64#)) (SI (I64# b64#)) =
++  case (# int64ToInt# a64#, int64ToInt# b64# #) of
++    (# x#, y# #) ->
++      case timesInt2# x# y# of
++        (# 0#, _, lo# #) -> SI (I64# (intToInt64# lo#))
++        -- Overflow
++        _ ->
++          if isTrue# ((x# ># 0#) `andI#` (y# ># 0#))
++            then maxBound
++            else
++              if isTrue# ((x# ># 0#) `andI#` (y# <# 0#))
++                then minBound
++                else
++                  if isTrue# ((x# <# 0#) `andI#` (y# ># 0#))
++                    then minBound
++                    else
++                      if isTrue# ((x# <# 0#) `andI#` (y# <# 0#))
++                        then maxBound
++                        -- Logically unreachable unless x or y is 0, in which
++                        -- case it should be impossible to overflow
++                        else overflowError
++{-# INLINE timesSI #-}
++
++#else
++
++-- 32-bit targets (incl. wasm32). 'Int#' is too narrow to hold an 'Int64', so
++-- we use a portable, boxed implementation. This is slower than the unboxed
++-- path above, but correctness is preserved on platforms where the fast path
++-- isn't representable.
++
++plusSI :: SatInt -> SatInt -> SatInt
++plusSI (SI a) (SI b) =
++  let r = a + b
++   in if a > 0 && b > 0 && r < 0
+         then maxBound
+         else
+-          if isTrue# ((x# <# 0#) `andI#` (y# <# 0#))
++          if a < 0 && b < 0 && r >= 0
+             then minBound
+-            -- x and y have opposite signs, and yet we've overflowed, should
+-            -- be impossible
+-            else overflowError
++            else SI r
+ {-# INLINE plusSI #-}
+ 
+ minusSI :: SatInt -> SatInt -> SatInt
+-minusSI (SI (I# x#)) (SI (I# y#)) =
+-  case subIntC# x# y# of
+-    (# r#, 0# #) -> SI (I# r#)
+-    -- Overflow
+-    _ ->
+-      if isTrue# ((x# >=# 0#) `andI#` (y# <# 0#))
++minusSI (SI a) (SI b) =
++  let r = a - b
++   in if a >= 0 && b < 0 && r < 0
+         then maxBound
+         else
+-          if isTrue# ((x# <=# 0#) `andI#` (y# ># 0#))
++          if a < 0 && b > 0 && r > 0
+             then minBound
+-            -- x and y have the same sign, and yet we've overflowed, should
+-            -- be impossible
+-            else overflowError
++            else SI r
+ {-# INLINE minusSI #-}
+ 
+ timesSI :: SatInt -> SatInt -> SatInt
+-timesSI (SI (I# x#)) (SI (I# y#)) =
+-  case timesInt2# x# y# of
+-    (# 0#, _, lo# #) -> SI (I# lo#)
+-    -- Overflow
+-    _ ->
+-      if isTrue# ((x# ># 0#) `andI#` (y# ># 0#))
++timesSI (SI a) (SI b) =
++  let a' = toInteger a
++      b' = toInteger b
++      r = a' * b'
++   in if r > maxBoundInteger
+         then maxBound
+         else
+-          if isTrue# ((x# ># 0#) `andI#` (y# <# 0#))
++          if r < minBoundInteger
+             then minBound
+-            else
+-              if isTrue# ((x# <# 0#) `andI#` (y# ># 0#))
+-                then minBound
+-                else
+-                  if isTrue# ((x# <# 0#) `andI#` (y# <# 0#))
+-                    then maxBound
+-                    -- Logically unreachable unless x or y is 0, in which case
+-                    -- it should be impossible to overflow
+-                    else overflowError
++            else SI (fromInteger r)
+ {-# INLINE timesSI #-}
++
++#endif
+ 
+ -- Specialized versions of several functions. They're specialized for
+ -- Int in the GHC base libraries. We try to get the same effect by

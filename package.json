@@ -1,21 +1,44 @@
 {
   "name": "wasm-cardano-node",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
+    "setup": "python3 -B wasm/setup.py",
     "build": "python3 build.py",
-    "dev": "node bridge.mjs",
+    "build:iwa": "node scripts/build-iwa.mjs",
+    "build:submit": "node scripts/build-iwa.mjs --submit",
+    "dev": "npm run build:ui && node bridge.mjs",
+    "dev:iwa": "npm run build:ui && node iwa.mjs",
+    "dev:submit": "npm run build:ui && node iwa.mjs --submit",
     "test": "node --test test/*.test.mjs",
     "test:live": "node test/live.mjs",
     "test:browser": "node test/browser.mjs",
-    "probe:direct": "node test/direct-relay.mjs"
+    "test:iwa": "node test/iwa.mjs",
+    "test:iwa:bundle": "node test/iwa.mjs --bundle",
+    "test:submit": "node test/submission-browser.mjs",
+    "probe:direct": "node test/direct-relay.mjs",
+    "build:cloudflare": "node scripts/build-cloudflare.mjs",
+    "check:cloudflare": "wrangler types build/cloudflare-env.d.ts && tsc -p cloudflare/tsconfig.json",
+    "deploy:cloudflare": "node scripts/deploy-cloudflare.mjs",
+    "test:cloudflare": "node scripts/build-cloudflare.mjs && node test/cloudflare-browser.mjs",
+    "test:cloudflare:live": "node test/cloudflare-live.mjs",
+    "build:ui": "node scripts/build-ui.mjs"
   },
   "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "ws": "8.21.3"
   },
   "devDependencies": {
-    "playwright-core": "1.62.1"
+    "@types/node": "26.5.1",
+    "esbuild": "0.28.1",
+    "miniflare": "5.20260911.0-alpha",
+    "playwright-core": "1.62.1",
+    "typescript": "7.0.2",
+    "wbn": "0.0.9",
+    "wbn-sign": "0.3.1",
+    "wrangler": "4.131.1"
   },
   "license": "Apache-2.0"
 }

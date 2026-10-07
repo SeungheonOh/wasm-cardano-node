@@ -1,0 +1,6 @@
+{
+  "repository": "https://gitlab.haskell.org/ghc/ghc-wasm-meta.git",
+  "revision": "8fd59591635cb47ad7db124562039bea8441cae8",
+  "flavour": "9.12",
+  "compiler": "9.12.4.20260731"
+}

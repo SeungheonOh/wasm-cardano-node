@@ -1,8 +1,11 @@
 # Direct relay connection from a normal browser tab
 
-The requirement is a normal browser tab with no proxy, extension, installed
-Isolated Web App, or native application. The existing bridge-based demo does
-**not** satisfy that transport requirement.
+This document covers a normal browser tab with no proxy, extension, installed
+Isolated Web App, or native application. The bridge-based demo does **not**
+satisfy that transport requirement. The separate
+[installed IWA mode](../README.md#direct-tcp-in-an-isolated-web-app) now supports
+direct TCP and has been tested against Mainnet relays; it changes the app's
+installation model, not the normal-tab result below.
 
 `npm run probe:direct` opens unmodified Chromium on a local static test page and
 attempts WebSocket connections directly to the Mainnet and Preview bootstrap
@@ -31,7 +34,7 @@ The protocol mismatch cannot be fixed by compiling additional Haskell modules:
    first TCP bytes.
 3. [Normal web applications cannot open arbitrary TCP sockets](https://developer.chrome.com/docs/iwa/direct-sockets).
    Chrome's Direct Sockets API is restricted to Isolated Web Apps, which are
-   outside the requested scope.
+   outside this normal-tab test's scope.
 4. [WebTransport uses HTTP/3/QUIC](https://developer.mozilla.org/en-US/docs/Web/API/WebTransport_API),
    so using it also requires support from the remote endpoint. It is not a
    general TCP connection API.
@@ -50,4 +53,5 @@ npm run probe:direct -- wss://your-relay.example/path
 ```
 
 A WebSocket opening alone does not establish Ouroboros compatibility; the probe
-reports that distinction. No installed-app or native-socket workaround was added.
+reports that distinction. Installed IWA tests run separately as `npm run test:iwa`
+and `npm run test:iwa:bundle`.

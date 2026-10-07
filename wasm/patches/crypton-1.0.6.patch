@@ -1,0 +1,80 @@
+--- a/Crypto/PubKey/Curve25519.hs
++++ b/Crypto/PubKey/Curve25519.hs
+@@ -26,6 +26,7 @@
+     generateSecretKey,
+ ) where
+ 
++import Foreign.C.Types (CInt (..))
+ import Data.Bits
+ import Data.Word
+ import Foreign.Ptr
+@@ -139,7 +140,16 @@
+     modifyByte p n f = peekByteOff p n >>= pokeByteOff p n . f
+ 
+ foreign import ccall "crypton_curve25519_donna"
+-    ccrypton_curve25519
++    ccrypton_curve25519_raw
++        :: Ptr Word8
++        -- ^ public
++        -> Ptr Word8
++        -- ^ secret
++        -> Ptr Word8
++        -- ^ basepoint
++        -> IO CInt
++
++ccrypton_curve25519
+         :: Ptr Word8
+         -- ^ public
+         -> Ptr Word8
+@@ -147,3 +157,4 @@
+         -> Ptr Word8
+         -- ^ basepoint
+         -> IO ()
++ccrypton_curve25519 a0 a1 a2 = ccrypton_curve25519_raw a0 a1 a2 >> pure ()
+--- a/Crypto/PubKey/Curve448.hs
++++ b/Crypto/PubKey/Curve448.hs
+@@ -28,6 +28,7 @@
+     generateSecretKey,
+ ) where
+ 
++import Foreign.C.Types (CInt (..))
+ import Data.Word
+ import Foreign.Ptr
+ 
+@@ -116,7 +117,16 @@
+ x448_bytes = 448 `quot` 8
+ 
+ foreign import ccall "crypton_decaf_x448"
+-    decaf_x448
++    decaf_x448_raw
++        :: Ptr Word8
++        -- ^ public
++        -> Ptr Word8
++        -- ^ basepoint
++        -> Ptr Word8
++        -- ^ secret
++        -> IO CInt
++
++decaf_x448
+         :: Ptr Word8
+         -- ^ public
+         -> Ptr Word8
+@@ -124,6 +134,7 @@
+         -> Ptr Word8
+         -- ^ secret
+         -> IO ()
++decaf_x448 a0 a1 a2 = decaf_x448_raw a0 a1 a2 >> pure ()
+ 
+ foreign import ccall "crypton_decaf_x448_derive_public_key"
+     decaf_x448_derive_public_key
+--- a/crypton.cabal
++++ b/crypton.cabal
+@@ -265,6 +265,8 @@
+         Crypto.Random.SystemDRG
+ 
+     cc-options:       -std=gnu99
++    if os(wasi)
++        cc-options: -DARGON2_NO_THREADS
+     c-sources:
+         cbits/argon2/argon2.c
+         cbits/crypton_blake2b.c

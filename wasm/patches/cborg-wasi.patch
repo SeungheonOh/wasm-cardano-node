@@ -1,0 +1,19 @@
+--- a/src/Codec/CBOR/Decoding.hs
++++ b/src/Codec/CBOR/Decoding.hs
+@@ -1129,13 +1129,9 @@
+ -- > closeByteSpan
+ --
+ -- @since 0.3.0.0
+-decodeWithByteSpan :: Decoder s a -> Decoder s (a, ByteSpan)
+-decodeWithByteSpan da = do
+-    openByteSpan
+-    x <- da
+-    bs <- peekByteSpan
+-    closeByteSpan
+-    return (x, bs)
++-- Preserve the cborg 0.2 API used by this Cardano release.
++decodeWithByteSpan :: Decoder s a -> Decoder s (a, ByteOffset, ByteOffset)
++decodeWithByteSpan = decodeWithByteOffsets
+ 
+ {-
+ expectExactly :: Word -> Decoder (Word :#: s) s

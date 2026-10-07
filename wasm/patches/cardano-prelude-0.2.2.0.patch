@@ -1,0 +1,20 @@
+--- a/src/Cardano/Prelude/GHC/Heap/Size.hs
++++ b/src/Cardano/Prelude/GHC/Heap/Size.hs
+@@ -69,7 +69,7 @@
+ -- a location we marked as already visited. This is also the reason that we
+ -- count the size of the object in C rather than in Haskell.
+ foreign import ccall unsafe "hs_cardanoprelude_closureSize"
+-  closureSize_ :: CUInt -> CUInt -> CUInt -> Ptr CUInt -> StablePtr a -> IO CULong
++  closureSize_ :: CUInt -> CUInt -> CUInt -> Ptr CUInt -> StablePtr a -> IO CULLong
+ 
+ -- | Should we perform a GC call before counting the size?
+ data PerformGC
+@@ -103,7 +103,7 @@
+         FirstPerformGC -> performMajorGC
+         DontPerformGC -> return ()
+       bracket (newStablePtr a) freeStablePtr $ \stablePtr ->
+-        closureSize_
++        fmap fromIntegral $ closureSize_
+           workListCapacity
+           visitedInitCapacity
+           visitedMaxCapacity

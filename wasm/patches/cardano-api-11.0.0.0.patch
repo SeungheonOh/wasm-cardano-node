@@ -1,0 +1,231 @@
+--- a/cardano-api.cabal
++++ b/cardano-api.cabal
+@@ -137,7 +137,7 @@
+     cardano-crypto,
+     cardano-crypto-class ^>=2.3,
+     cardano-crypto-wrapper ^>=1.7,
+-    cardano-data >=1.0,
++    cardano-data >=1.0 && <1.3.1,
+     cardano-diffusion:{api, cardano-diffusion} ^>=1.0,
+     cardano-ledger-allegra >=1.7,
+     cardano-ledger-alonzo >=1.15,
+@@ -179,8 +179,8 @@
+     ouroboros-consensus:{cardano, diffusion, ouroboros-consensus, protocol} ^>=3.0,
+     ouroboros-network:{api, framework, ouroboros-network, protocols} ^>=1.1,
+     parsec,
+-    plutus-core ^>=1.61,
+-    plutus-ledger-api ^>=1.61,
++    plutus-core ^>=1.63,
++    plutus-ledger-api ^>=1.63,
+     pretty-simple,
+     prettyprinter,
+     prettyprinter-ansi-terminal,
+@@ -306,180 +306,3 @@
+     Cardano.Api.Value.Internal
+     Cardano.Api.Value.Internal.Parser
+ 
+-library gen
+-  import: project-config
+-  visibility: public
+-  hs-source-dirs: gen
+-  exposed-modules:
+-    Test.Gen.Cardano.Api
+-    Test.Gen.Cardano.Api.Byron
+-    Test.Gen.Cardano.Api.Era
+-    Test.Gen.Cardano.Api.Experimental
+-    Test.Gen.Cardano.Api.Hardcoded
+-    Test.Gen.Cardano.Api.Metadata
+-    Test.Gen.Cardano.Api.ProtocolParameters
+-    Test.Gen.Cardano.Api.Typed
+-    Test.Gen.Cardano.Crypto.Seed
+-    Test.Hedgehog.Golden.ErrorMessage
+-    Test.Hedgehog.Roundtrip.Bech32
+-    Test.Hedgehog.Roundtrip.CBOR
+-
+-  build-depends:
+-    QuickCheck <2.18,
+-    aeson >=1.5.6.0,
+-    base16-bytestring,
+-    bytestring,
+-    cardano-api,
+-    cardano-binary >=1.6 && <1.9,
+-    cardano-crypto-class ^>=2.3,
+-    cardano-crypto-wrapper:testlib ^>=1.7,
+-    cardano-ledger-alonzo:{cardano-ledger-alonzo, testlib},
+-    cardano-ledger-byron:testlib,
+-    cardano-ledger-conway:testlib,
+-    cardano-ledger-core:{cardano-ledger-core, testlib},
+-    cardano-ledger-dijkstra:testlib,
+-    cardano-ledger-shelley,
+-    cardano-strict-containers,
+-    containers,
+-    filepath,
+-    hedgehog >=1.1,
+-    hedgehog-extras,
+-    hedgehog-quickcheck,
+-    ordered-containers,
+-    tasty,
+-    tasty-hedgehog,
+-    text,
+-
+-test-suite cardano-api-test
+-  import: project-config
+-  hs-source-dirs: test/cardano-api-test
+-  main-is: cardano-api-test.hs
+-  type: exitcode-stdio-1.0
+-
+-  if arch(wasm32)
+-    buildable: False
+-  build-depends:
+-    FailT,
+-    QuickCheck <2.18,
+-    aeson >=1.5.6.0,
+-    base16-bytestring,
+-    bytestring,
+-    cardano-api,
+-    cardano-api:gen,
+-    cardano-binary,
+-    cardano-crypto,
+-    cardano-crypto-class:{cardano-crypto-class, testlib} ^>=2.3,
+-    cardano-crypto-wrapper:testlib,
+-    cardano-ledger-alonzo,
+-    cardano-ledger-api ^>=1.13,
+-    cardano-ledger-babbage,
+-    cardano-ledger-binary,
+-    cardano-ledger-conway,
+-    cardano-ledger-core,
+-    cardano-ledger-dijkstra,
+-    cardano-ledger-mary,
+-    cardano-ledger-shelley,
+-    cardano-protocol-tpraos,
+-    cardano-slotting,
+-    cardano-strict-containers,
+-    cborg,
+-    containers,
+-    data-default,
+-    directory,
+-    hedgehog >=1.1,
+-    hedgehog-extras,
+-    hedgehog-quickcheck,
+-    microlens,
+-    mtl,
+-    ouroboros-consensus:{ouroboros-consensus, protocol},
+-    raw-strings-qq,
+-    tasty,
+-    tasty-hedgehog,
+-    tasty-quickcheck,
+-    text,
+-    time,
+-
+-  other-modules:
+-    Test.Cardano.Api.Address
+-    Test.Cardano.Api.Bech32
+-    Test.Cardano.Api.CBOR
+-    Test.Cardano.Api.Cip129
+-    Test.Cardano.Api.Crypto
+-    Test.Cardano.Api.Envelope
+-    Test.Cardano.Api.EpochLeadership
+-    Test.Cardano.Api.Eras
+-    Test.Cardano.Api.Experimental
+-    Test.Cardano.Api.Experimental.Fee
+-    Test.Cardano.Api.Genesis
+-    Test.Cardano.Api.GovAnchorValidation
+-    Test.Cardano.Api.IO
+-    Test.Cardano.Api.Json
+-    Test.Cardano.Api.KeysByron
+-    Test.Cardano.Api.Ledger
+-    Test.Cardano.Api.Leios
+-    Test.Cardano.Api.Metadata
+-    Test.Cardano.Api.Ord
+-    Test.Cardano.Api.Orphans
+-    Test.Cardano.Api.RawBytes
+-    Test.Cardano.Api.Transaction.Autobalance
+-    Test.Cardano.Api.Transaction.Body.Plutus.Scripts
+-    Test.Cardano.Api.TxBody
+-    Test.Cardano.Api.Value
+-
+-  ghc-options:
+-    -threaded
+-    -rtsopts
+-    "-with-rtsopts=-N -T"
+-
+-test-suite cardano-api-golden
+-  import: project-config
+-  hs-source-dirs: test/cardano-api-golden
+-  main-is: cardano-api-golden.hs
+-  type: exitcode-stdio-1.0
+-
+-  if arch(wasm32)
+-    buildable: False
+-  build-depends:
+-    aeson,
+-    base64-bytestring,
+-    bech32 >=1.1.0,
+-    bytestring,
+-    cardano-api,
+-    cardano-api:gen,
+-    cardano-binary,
+-    cardano-crypto-class,
+-    cardano-data >=1.0,
+-    cardano-ledger-alonzo,
+-    cardano-ledger-api ^>=1.13,
+-    cardano-ledger-binary,
+-    cardano-ledger-core,
+-    cardano-ledger-shelley,
+-    cardano-protocol-tpraos,
+-    containers,
+-    directory,
+-    errors,
+-    filepath,
+-    hedgehog >=1.1,
+-    hedgehog-extras ^>=0.10,
+-    microlens,
+-    plutus-core ^>=1.61,
+-    plutus-ledger-api ^>=1.61,
+-    tasty,
+-    tasty-discover,
+-    tasty-hedgehog,
+-    text,
+-    time,
+-
+-  ghc-options:
+-    -threaded
+-    -rtsopts
+-    "-with-rtsopts=-N -T"
+-
+-  build-tool-depends: tasty-discover:tasty-discover
+-  other-modules:
+-    Test.Golden.Cardano.Api.Genesis
+-    Test.Golden.Cardano.Api.Ledger
+-    Test.Golden.Cardano.Api.Script
+-    Test.Golden.Cardano.Api.Tx
+-    Test.Golden.Cardano.Api.Value
+-    Test.Golden.ErrorsSpec
+--- a/src/Cardano/Api/Byron/Internal/Proposal.hs
++++ b/src/Cardano/Api/Byron/Internal/Proposal.hs
+@@ -23,7 +23,7 @@
+ import Cardano.Api.Network.Internal.NetworkId (NetworkId, toByronProtocolMagicId)
+ import Cardano.Api.Serialise.Raw
+ 
+-import Cardano.Binary qualified as Binary
++import Cardano.Binary qualified as Binary hiding (ByteSpan)
+ import Cardano.Chain.Common (LovelacePortion, TxFeePolicy)
+ import Cardano.Chain.Slotting
+ import Cardano.Chain.Update
+--- a/src/Cardano/Api/Key/Internal/Leios.hs
++++ b/src/Cardano/Api/Key/Internal/Leios.hs
+@@ -199,13 +199,7 @@
+ -- we don't want a proof of possession for one purpose to be interpreted as something different
+ -- in a different context.
+ minSigPoPContext :: Crypto.BLS12381SignContext
+-minSigPoPContext = Crypto.BLS12381SignContext (Just minSigPoPDST) Nothing
+-
+--- TODO: This is a provisional definition. Import @minSigPoPDST@ from
+--- @Cardano.Crypto.DSIGN.BLS12381@ (cardano-crypto-class) when
+--- IntersectMBO/cardano-base#635 is merged and the dependency is bumped.
+-minSigPoPDST :: ByteString
+-minSigPoPDST = "BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_POP_"
++minSigPoPContext = Crypto.minSigPoPDST
+ 
+ -- | Create a proof of possession for a BLS signing key.
+ --

@@ -1,0 +1,92 @@
+--- a/cbits/foundation_random.c
++++ b/cbits/foundation_random.c
+@@ -41,6 +41,11 @@
+ 			i += r;
+ 	}
+ 	return 0;
++}
++#elif defined(__wasi__)
++#include <wasi/api.h>
++int foundation_sysrandom_linux(void *buf, size_t length) {
++    return -(int)__wasi_random_get(buf, length);
+ }
+ #else
+ int foundation_sysrandom_linux(void *buf, size_t length) { return -ENODEV; }
+--- a/cbits/foundation_system.h
++++ b/cbits/foundation_system.h
+@@ -28,6 +28,10 @@
+     #else
+     #   error "foundation: system: Unknown Apple platform"
+     #endif
++#elif defined(__wasi__)
++    #define FOUNDATION_SYSTEM_UNIX
++    #define FOUNDATION_SYSTEM_WASI
++    #define FOUNDATION_SYSTEM_API_NO_CLOCK
+ #elif __linux__
+     #define FOUNDATION_SYSTEM_UNIX
+     #define FOUNDATION_SYSTEM_LINUX
+--- a/cbits/foundation_time.c
++++ b/cbits/foundation_time.c
+@@ -79,6 +79,22 @@
+ 	return 0;
+ }
+ 
++#elif defined(FOUNDATION_SYSTEM_WASI)
++#include <time.h>
++#include <errno.h>
++
++int foundation_time_clock_gettime(unsigned int id, struct timespec *out) {
++    if (id == FOUNDATION_CLOCK_REALTIME) return clock_gettime(CLOCK_REALTIME, out);
++    if (id == FOUNDATION_CLOCK_MONOTONIC) return clock_gettime(CLOCK_MONOTONIC, out);
++    errno = ENOTSUP;
++    return -1;
++}
++int foundation_time_clock_getres(unsigned int id, struct timespec *out) {
++    if (id == FOUNDATION_CLOCK_REALTIME) return clock_getres(CLOCK_REALTIME, out);
++    if (id == FOUNDATION_CLOCK_MONOTONIC) return clock_getres(CLOCK_MONOTONIC, out);
++    errno = ENOTSUP;
++    return -1;
++}
+ #elif defined(FOUNDATION_SYSTEM_WINDOWS)
+ 
+ #include <windows.h>
+--- a/foundation.cabal
++++ b/foundation.cabal
+@@ -67,6 +67,8 @@
+   manual:            True
+ 
+ library
++  cc-options: -D_WASI_EMULATED_MMAN
++  extra-libraries: wasi-emulated-mman
+   exposed-modules:   Foundation
+                      Foundation.Numerical
+                      Foundation.Array
+@@ -164,15 +166,17 @@
+                      Foundation.Partial
+                      -- Foundation.Time.Bindings
+                      Foundation.System.Entropy.Common
+-                     Foundation.System.Bindings.Network
+                      Foundation.System.Bindings.Time
+                      Foundation.System.Bindings.Hs
+ 
+   include-dirs:      cbits
+   c-sources:         cbits/foundation_random.c
+-                     cbits/foundation_network.c
+                      cbits/foundation_time.c
+                      cbits/foundation_utf8.c
++
++  if !arch(wasm32)
++    other-modules: Foundation.System.Bindings.Network
++    c-sources: cbits/foundation_network.c
+ 
+   if flag(experimental)
+     exposed-modules: Foundation.Network.HostName
+@@ -212,7 +216,7 @@
+   --  CPP-options: -DARCH_IS_LITTLE_ENDIAN
+   -- FIXME add support for powerpc powerpc64 armeb mipseb
+   --  CPP-options: -DARCH_IS_BIG_ENDIAN
+-  if (arch(i386) || arch(x86_64))
++  if (arch(i386) || arch(x86_64) || arch(wasm32))
+     cpp-options: -DARCH_IS_LITTLE_ENDIAN
+   else
+     cpp-options: -DARCH_IS_UNKNOWN_ENDIAN

@@ -1,0 +1,66 @@
+--- a/src/Cardano/Crypto/Wallet/Encrypted.hs
++++ b/src/Cardano/Crypto/Wallet/Encrypted.hs
+@@ -14,6 +14,7 @@
+     , encryptedDerivePublic
+     ) where
+ 
++import Foreign.C.Types (CInt (..))
+ import           Control.DeepSeq
+ import           Data.Word
+ import           Foreign.C.Types
+@@ -189,10 +190,16 @@
+                                  -> IO CInt
+ 
+ foreign import ccall "wallet_encrypted_new_from_mkg"
+-    wallet_encrypted_new_from_mkg :: Ptr PassPhrase -> Word32
++    wallet_encrypted_new_from_mkg_raw :: Ptr PassPhrase -> Word32
++                                  -> Ptr Word8 -- 96 bytes master key generation
++                                  -> Ptr EncryptedKey
++                                  -> IO CInt
++
++wallet_encrypted_new_from_mkg :: Ptr PassPhrase -> Word32
+                                   -> Ptr Word8 -- 96 bytes master key generation
+                                   -> Ptr EncryptedKey
+                                   -> IO ()
++wallet_encrypted_new_from_mkg a0 a1 a2 a3 = wallet_encrypted_new_from_mkg_raw a0 a1 a2 a3 >> pure ()
+ 
+ foreign import ccall "wallet_encrypted_sign"
+     wallet_encrypted_sign :: Ptr EncryptedKey
+--- a/src/Crypto/ECC/Ed25519Donna.hs
++++ b/src/Crypto/ECC/Ed25519Donna.hs
+@@ -25,6 +25,7 @@
+     , secretAdd
+     ) where
+ 
++import Foreign.C.Types (CInt (..))
+ import           Control.DeepSeq
+ import           Data.Word
+ import           Foreign.Ptr
+@@ -171,13 +172,25 @@
+                              -> IO ()
+ 
+ foreign import ccall "cardano_crypto_ed25519_point_add"
+-    ccryptonite_ed25519_point_add :: Ptr PublicKey -- p1
++    ccryptonite_ed25519_point_add_raw :: Ptr PublicKey -- p1
++                                  -> Ptr PublicKey -- p2
++                                  -> Ptr PublicKey -- p1 + p2
++                                  -> IO CInt
++
++ccryptonite_ed25519_point_add :: Ptr PublicKey -- p1
+                                   -> Ptr PublicKey -- p2
+                                   -> Ptr PublicKey -- p1 + p2
+                                   -> IO ()
++ccryptonite_ed25519_point_add a0 a1 a2 = ccryptonite_ed25519_point_add_raw a0 a1 a2 >> pure ()
+ 
+ foreign import ccall "cardano_crypto_ed25519_scalar_add"
+-    ccryptonite_ed25519_scalar_add :: Ptr SecretKey -- s1
++    ccryptonite_ed25519_scalar_add_raw :: Ptr SecretKey -- s1
++                                   -> Ptr SecretKey -- s2
++                                   -> Ptr SecretKey -- s1 + s2
++                                   -> IO CInt
++
++ccryptonite_ed25519_scalar_add :: Ptr SecretKey -- s1
+                                    -> Ptr SecretKey -- s2
+                                    -> Ptr SecretKey -- s1 + s2
+                                    -> IO ()
++ccryptonite_ed25519_scalar_add a0 a1 a2 = ccryptonite_ed25519_scalar_add_raw a0 a1 a2 >> pure ()

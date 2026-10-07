@@ -1,6 +1,6 @@
 // Ouroboros mux framing only. CBOR, negotiation and mini-protocol state live in WASM.
 export const LIMIT = 2 * 1024 * 1024;
-const protocols = new Set([0, 2, 3, 8]);
+const defaultProtocols = [0, 2, 3, 8];
 export const hex = bytes => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 export const unhex = text => {
   if (text.length % 2 || !/^[0-9a-f]*$/i.test(text)) throw new Error('Invalid byte encoding');
@@ -19,12 +19,13 @@ export function frame(protocol, payload, responder = false) {
 }
 
 export class MuxTransport {
-  constructor(write, onEvent = () => {}, disconnect = () => {}) {
+  constructor(write, onEvent = () => {}, disconnect = () => {}, enabledProtocols = defaultProtocols) {
+    this.protocols = new Set(enabledProtocols);
     this.write = write;
     this.onEvent = onEvent;
     this.disconnect = disconnect;
     this.pending = new Map();
-    this.queues = new Map([...protocols].map(p => [p, []]));
+    this.queues = new Map([...this.protocols].map(p => [p, []]));
     this.buffer = new Uint8Array();
     this.queuedBytes = 0;
     this.failure = null;
@@ -44,7 +45,7 @@ export class MuxTransport {
       while (bytes.length - offset >= 8) {
         const view = new DataView(bytes.buffer, offset);
         const id = view.getUint16(4), protocol = id & 0x7fff, length = view.getUint16(6);
-        if (!(id & 0x8000) || !protocols.has(protocol)) throw new Error(`Unexpected mux protocol/direction ${id}`);
+        if (!(id & 0x8000) || !this.protocols.has(protocol)) throw new Error(`Unexpected mux protocol/direction ${id}`);
         if (!length) throw new Error('Empty mux segment');
         if (bytes.length - offset < 8 + length) break;
         const payload = bytes.slice(offset + 8, offset + 8 + length);
@@ -63,7 +64,7 @@ export class MuxTransport {
   }
   receive(protocol) {
     if (this.failure) return Promise.reject(this.failure);
-    if (!protocols.has(protocol) || this.pending.has(protocol))
+    if (!this.protocols.has(protocol) || this.pending.has(protocol))
       return Promise.reject(new Error('Invalid concurrent receive'));
     const queue = this.queues.get(protocol);
     if (queue.length) {
@@ -75,7 +76,7 @@ export class MuxTransport {
   }
   async send(protocol, encoded) {
     if (this.failure) throw this.failure;
-    if (!protocols.has(protocol)) throw new Error('Unknown outgoing protocol');
+    if (!this.protocols.has(protocol)) throw new Error('Unknown outgoing protocol');
     const bytes = unhex(encoded);
     for (let offset = 0; offset < bytes.length; offset += 65535) {
       const segment = frame(protocol, bytes.subarray(offset, offset + 65535));

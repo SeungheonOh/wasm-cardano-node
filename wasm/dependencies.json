@@ -1,0 +1,136 @@
+[
+  {
+    "directory": "kes-agent-1.2.0.0",
+    "url": "https://chap.intersectmbo.org/package/kes-agent-1.2.0.0.tar.gz",
+    "sha256": "a418798c33bb5023d7061b2780de6e14eddfa538d5001b2828f98781878edf3d",
+    "archiveRoot": "kes-agent-1.2.0.0",
+    "patch": "patches/kes-agent-1.2.0.0.patch"
+  },
+  {
+    "directory": "cardano-crypto-1.3.0",
+    "url": "https://chap.intersectmbo.org/package/cardano-crypto-1.3.0.tar.gz",
+    "sha256": "737961a48f7412d152e2a4f8e34d505c58791f20c3a3f3c5976e90fd78915294",
+    "archiveRoot": "cardano-crypto-1.3.0",
+    "patch": "patches/cardano-crypto-1.3.0.patch"
+  },
+  {
+    "directory": "cardano-prelude-0.2.2.0",
+    "url": "https://chap.intersectmbo.org/package/cardano-prelude-0.2.2.0.tar.gz",
+    "sha256": "ebf44f97ddae24338baf7cdb0ab499262953080c54299872179ac0ceab57aa9a",
+    "archiveRoot": "cardano-prelude-0.2.2.0",
+    "patch": "patches/cardano-prelude-0.2.2.0.patch"
+  },
+  {
+    "directory": "plutus-core-1.63.0.0",
+    "url": "https://chap.intersectmbo.org/package/plutus-core-1.63.0.0.tar.gz",
+    "sha256": "6b7d85e8d7e3d4a4112069fca13f1e24b91af72477dfbe45fac6fb83c4d5ef71",
+    "archiveRoot": "plutus-core-1.63.0.0",
+    "patch": "patches/plutus-core-1.63.0.0.patch"
+  },
+  {
+    "directory": "ouroboros-consensus-3.0.1.0",
+    "url": "https://chap.intersectmbo.org/package/ouroboros-consensus-3.0.1.0.tar.gz",
+    "sha256": "dd5046670b10eef074b58981360532038705231357ab8da65615d8d080a525fe",
+    "archiveRoot": "ouroboros-consensus-3.0.1.0",
+    "patch": "patches/ouroboros-consensus-3.0.1.0.patch"
+  },
+  {
+    "directory": "cardano-api-11.0.0.0",
+    "url": "https://chap.intersectmbo.org/package/cardano-api-11.0.0.0.tar.gz",
+    "sha256": "3ae752355f4ec19bd689eea59d4abdc24a0aa2bf732ca8cc228d4b28deafa576",
+    "archiveRoot": "cardano-api-11.0.0.0",
+    "patch": "patches/cardano-api-11.0.0.0.patch"
+  },
+  {
+    "directory": "cardano-crypto-class-2.5.0.0",
+    "url": "https://chap.intersectmbo.org/package/cardano-crypto-class-2.5.0.0.tar.gz",
+    "sha256": "d89d679d5d92801bc597b902a3c730793d1849a7482495f37859a6102492e9f7",
+    "archiveRoot": "cardano-crypto-class-2.5.0.0",
+    "patch": "patches/cardano-crypto-class-2.5.0.0.patch"
+  },
+  {
+    "directory": "cardano-crypto-praos-2.2.2.0",
+    "url": "https://chap.intersectmbo.org/package/cardano-crypto-praos-2.2.2.0.tar.gz",
+    "sha256": "b9b7d2646ae55ea2d5fda5f4600df8028bbee013ab6aeba82c70bdbbe6519cab",
+    "archiveRoot": "cardano-crypto-praos-2.2.2.0",
+    "patch": "patches/cardano-crypto-praos-2.2.2.0.patch"
+  },
+  {
+    "directory": "crypton-1.0.6",
+    "url": "https://hackage.haskell.org/package/crypton-1.0.6/crypton-1.0.6.tar.gz",
+    "sha256": "9c6523e7f46df0bda731e5007a1f6b43b1ee1f0dcd159bed870abbff752b82e6",
+    "archiveRoot": "crypton-1.0.6",
+    "patch": "patches/crypton-1.0.6.patch"
+  },
+  {
+    "directory": "cryptonite-0.30",
+    "url": "https://hackage.haskell.org/package/cryptonite-0.30/cryptonite-0.30.tar.gz",
+    "sha256": "56099c8a8aa01d2ee914b670c97c1f818186dbb886e2025b73d9c2afe3496b1d",
+    "archiveRoot": "cryptonite-0.30",
+    "patch": "patches/cryptonite-0.30.patch"
+  },
+  {
+    "directory": "memory-0.18.0",
+    "url": "https://hackage.haskell.org/package/memory-0.18.0/memory-0.18.0.tar.gz",
+    "sha256": "fd4eb6f638e24b81b4e6cdd68772a531726f2f67686c8969d3407d82f7862e3e",
+    "archiveRoot": "memory-0.18.0",
+    "patch": "patches/memory-0.18.0.patch"
+  },
+  {
+    "directory": "double-conversion-2.0.5.0",
+    "url": "https://hackage.haskell.org/package/double-conversion-2.0.5.0/double-conversion-2.0.5.0.tar.gz",
+    "sha256": "98c699b6e47b257dff85d49d59e39858462598008e074460c8bfacaa3e2a43ba",
+    "archiveRoot": "double-conversion-2.0.5.0",
+    "patch": "patches/double-conversion-2.0.5.0.patch"
+  },
+  {
+    "directory": "foundation-0.0.30",
+    "git": "https://github.com/haskell-wasm/foundation.git",
+    "revision": "8e6dd48527fb429c1922083a5030ef88e3d58dd3",
+    "subdirectory": "foundation",
+    "patch": "patches/foundation-0.0.30.patch"
+  },
+  {
+    "directory": "basement",
+    "git": "https://github.com/haskell-wasm/foundation.git",
+    "revision": "8e6dd48527fb429c1922083a5030ef88e3d58dd3",
+    "subdirectory": "basement",
+    "patch": null
+  },
+  {
+    "directory": "cborg-wasi",
+    "git": "https://github.com/well-typed/cborg.git",
+    "revision": "6ef2791ca41b397a3e36c868ad3e66a0d09f19b2",
+    "subdirectory": "cborg",
+    "patch": "patches/cborg-wasi.patch"
+  },
+  {
+    "directory": "network",
+    "git": "https://github.com/haskell-wasm/network.git",
+    "revision": "1dc870889eee4ac733335ced4e274b4dfe8ed369",
+    "subdirectory": "",
+    "patch": null,
+    "autoreconf": true
+  },
+  {
+    "directory": "ram",
+    "git": "https://github.com/jappeace/ram.git",
+    "revision": "335d2c2b58d6bce20d613aa4a5261227764d7f1c",
+    "subdirectory": "",
+    "patch": "patches/ram.patch"
+  },
+  {
+    "directory": "libsodium-clib",
+    "git": "https://github.com/haskell-cryptography/libsodium-clib.git",
+    "revision": "985c18f75a71ff721370940666d71fda53edbb14",
+    "subdirectory": "",
+    "patch": "patches/libsodium-clib.patch"
+  },
+  {
+    "directory": "browser-wasi-shim-0.4.2",
+    "url": "https://registry.npmjs.org/@bjorn3/browser_wasi_shim/-/browser_wasi_shim-0.4.2.tgz",
+    "sha256": "9c0281520d0e99f027ec7c1c79b4036c0f8168ed9bf98aba19db4737a1333782",
+    "archiveRoot": "package",
+    "patch": null
+  }
+]

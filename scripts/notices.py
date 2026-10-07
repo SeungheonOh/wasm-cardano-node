@@ -7,17 +7,13 @@ import sys
 import tarfile
 
 sys.dont_write_bytecode = True
-# Adapted from sc-pab/wasm/collect-notices.py (Apache-2.0).
-import os
 ROOT = Path(__file__).resolve().parent.parent
-CACHE = Path(os.environ.get('SC_PAB_CACHE', Path.home() / '.cache/sc-pab'))
-BUILD = CACHE / 'build'
-DEPS = CACHE / 'deps'
-BROWSER = ROOT / 'dist'
+sys.path.insert(0, str(ROOT / 'wasm'))
+from paths import BUILD, CABAL, TOOLCHAIN
 
-toolchain = Path(sys.argv[1]).resolve()
+toolchain = TOOLCHAIN
 application = 'wasm-cardano-node'
-destination = BROWSER
+destination = Path(sys.argv[1]).resolve()
 plan = json.loads((BUILD / 'cache/plan.json').read_text())
 nodes = {node['id']: node for node in plan['install-plan']}
 visited = set()
@@ -41,16 +37,14 @@ for (name, version), node in sorted(packages.items()):
     files = []
     source = node.get('pkg-src', {})
     cabal_metadata = ''
-    if name.startswith('convex-'):
-        files = [('sc-tools/LICENSE', (DEPS / 'sc-tools/LICENSE').read_text())]
-    elif name == application:
+    if name == application:
         files = [('LICENSE', (ROOT / 'LICENSE').read_text())]
     elif source.get('type') in ('local', 'source-repo'):
         path = Path(source['path']) if source['type'] == 'local' else next(p.parent for p in (BUILD / 'src').glob('*/' + name + '.cabal'))
         files = [(str(p.relative_to(path)), p.read_text(errors='replace')) for p in sorted(path.rglob('*'))
                  if p.is_file() and notice.match(p.name) and '.git' not in p.parts and 'dist-build' not in p.parts]
     else:
-        archives = list((toolchain / '.cabal/packages').glob(f'*/{name}/{version}/{name}-{version}.tar.gz'))
+        archives = list((CABAL / 'packages').glob(f'*/{name}/{version}/{name}-{version}.tar.gz'))
         if archives:
             with tarfile.open(archives[0]) as archive:
                 for member in archive.getmembers():
@@ -68,7 +62,7 @@ for (name, version), node in sorted(packages.items()):
             files = [('Package metadata (no separate license file in source archive)', fields)]
         else:
             missing.append(f'{name}-{version}')
-    else:
+    if files:
         sections.append('\n' + '=' * 72 + f'\n{name} {version}\n' + '=' * 72 + '\n')
         for filename, contents in files:
             sections.append(f'\n{filename}\n\n{contents}\n')

@@ -23,6 +23,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Word
 import GHC.Wasm.Prim (JSString (..), JSVal, fromJSString, toJSString)
+import GHC.Clock (getMonotonicTimeNSec)
 import Ouroboros.Consensus.Block
 import Ouroboros.Consensus.Cardano.Block (CardanoBlock)
 import Ouroboros.Consensus.Cardano.Node (protocolClientInfoCardano)
@@ -47,6 +48,7 @@ import Ouroboros.Network.Protocol.KeepAlive.Client qualified as KA
 import Ouroboros.Network.Protocol.KeepAlive.Codec (codecKeepAlive_v2)
 import Ouroboros.Network.Protocol.KeepAlive.Type (Cookie (..))
 import VersionData (versionDataCodec)
+import Transaction (transactionJSON)
 
 -- The host supplies only byte channels and an event sink. Every protocol message
 -- is produced/consumed by the original Ouroboros typed clients and codecs.
@@ -144,10 +146,8 @@ blockClient requests = client
                   (throwIO (userError "Transaction events support Shelley and later blocks"))
                   (\sbe -> C.shelleyBasedEraConstraints sbe $ do
                   let txs = C.getBlockTxs apiBlock
-                      txJSON tx = object ["id" .= C.serialiseToRawBytesHexText (C.getTxId (C.getTxBody tx)),
-                                          "cborHex" .= T.decodeUtf8 (Hex.encode (C.serialiseToCBOR tx))]
                   emit (object ["type" .= ("block" :: T.Text), "point" .= pointJSON point,
-                                "era" .= show era, "transactions" .= map txJSON txs])) era
+                                "era" .= show era, "transactions" .= map transactionJSON txs])) era
               pure receiver
           , BF.handleBatchDone = do
               n <- readIORef count
@@ -164,12 +164,22 @@ blockClient requests = client
 keepAliveClient :: KA.KeepAliveClient IO ()
 keepAliveClient = KA.KeepAliveClient (loop 0)
  where
-  loop cookie = pure (KA.SendMsgKeepAlive (Cookie cookie) $ do
-    evaluate =<< jsSleep 10000
-    loop (cookie + 1))
+  loop cookie = do
+    started <- getMonotonicTimeNSec
+    pure (KA.SendMsgKeepAlive (Cookie cookie) $ do
+      finished <- getMonotonicTimeNSec
+      emit (object ["type" .= ("keepAlive" :: T.Text),
+                    "roundTripMs" .= (fromIntegral (finished - started) / 1000000 :: Double)])
+      evaluate =<< jsSleep 10000
+      loop (cookie + 1))
 
 cardanoStream :: Word32 -> Word64 -> Bool -> IO ()
 cardanoStream magic epochSlots bodies = do
+  version <- negotiate magic
+  stream version epochSlots bodies
+
+negotiate :: Word32 -> IO NodeToNodeVersion
+negotiate magic = do
   let versionData = NodeToNodeVersionData (NetworkMagic magic) InitiatorOnlyDiffusionMode PeerSharingDisabled False
       versions = Versions (Map.map (const (Version (const ()) versionData)) (supportedNodeToNodeVersions proxy))
   (negotiation, _) <- runPeerWithLimits nullTracer (codecHandshake nodeToNodeVersionCodec)
@@ -180,6 +190,10 @@ cardanoStream magic epochSlots bodies = do
     Left err -> throwIO (userError ("Handshake failed: " ++ show err))
     Right HandshakeQueryResult{} -> throwIO (userError "Unexpected handshake query result")
   emit (object ["type" .= ("connected" :: T.Text), "networkMagic" .= magic, "version" .= show version])
+  pure version
+
+stream :: NodeToNodeVersion -> Word64 -> Bool -> IO ()
+stream version epochSlots bodies = do
   let config = pClientInfoCodecConfig (protocolClientInfoCardano (C.EpochSlots epochSlots))
       blockVersion = supportedNodeToNodeVersions proxy Map.! version
       csCodec = codecChainSync

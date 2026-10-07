@@ -1,0 +1,49 @@
+--- a/Data/Memory/Internal/CompatPrim64.hs
++++ b/Data/Memory/Internal/CompatPrim64.hs
+@@ -150,8 +150,12 @@
+ w64# w _ _ = w
+ 
+ #elif WORD_SIZE_IN_BITS == 32
++#if MIN_VERSION_base(4,16,0)
++import GHC.Prim hiding (timesWord64#)
++#else
+ import GHC.IntWord64
+ import GHC.Prim (Word#)
++#endif
+ 
+ timesWord64# :: Word64# -> Word64# -> Word64#
+ timesWord64# a b =
+--- a/Data/Memory/PtrMethods.hs
++++ b/Data/Memory/PtrMethods.hs
+@@ -63,7 +63,7 @@
+ 
+ -- | Copy a set number of bytes from @src to @dst
+ memCopy :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
+-memCopy dst src n = c_memcpy dst src (fromIntegral n)
++memCopy dst src n = c_memcpy dst src (fromIntegral n) >>= \_ -> return ()
+ {-# INLINE memCopy #-}
+ 
+ -- | Set @n number of bytes to the same value @v
+@@ -114,7 +114,7 @@
+             loop (i+1) (acc .|. e)
+ 
+ foreign import ccall unsafe "memset"
+-    c_memset :: Ptr Word8 -> Word8 -> CSize -> IO ()
++    c_memset :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
+ 
+ foreign import ccall unsafe "memcpy"
+-    c_memcpy :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
++    c_memcpy :: Ptr Word8 -> Ptr Word8 -> CSize -> IO (Ptr Word8)
+--- a/memory.cabal
++++ b/memory.cabal
+@@ -79,6 +79,10 @@
+   -- ARCH_ENDIAN_UNKNOWN
+   if (arch(i386) || arch(x86_64))
+     CPP-options:     -DARCH_IS_LITTLE_ENDIAN
++  if os(wasi)
++    CPP-options:     -DARCH_IS_LITTLE_ENDIAN
++    CC-options:      -D_WASI_EMULATED_MMAN
++    extra-libraries: wasi-emulated-mman
+   if os(windows)
+     Other-modules:   Data.Memory.MemMap.Windows
+   else

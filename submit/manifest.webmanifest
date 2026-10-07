@@ -1,0 +1,36 @@
+{
+  "id": "/",
+  "name": "Cardano Submit",
+  "short_name": "Cardano Submit",
+  "version": "0.1.1",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/submit/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "permissions_policy": {
+    "direct-sockets": [
+      "self"
+    ],
+    "direct-sockets-private": [
+      "self"
+    ],
+    "local-network": [
+      "self"
+    ],
+    "loopback-network": [
+      "self"
+    ],
+    "cross-origin-isolated": [
+      "self"
+    ]
+  }
+}
